@@ -1,0 +1,506 @@
+import pygame
+import random
+import sys
+
+pygame.init()
+
+
+LARGEUR, HAUTEUR = 800, 300
+FENETRE = pygame.display.set_mode((LARGEUR, HAUTEUR))
+pygame.display.set_caption("Dino, Flappy, Snake & Labyrinthe")
+
+
+BLANC = (255, 255, 255)
+NOIR = (0, 0, 0)
+ROUGE = (255, 0, 0)
+VERT = (0, 255, 0)
+BLEU = (0, 0, 255)
+OR = (255, 215, 0)
+
+
+dino_img = pygame.Surface((50, 50));
+dino_img.fill((0, 128, 0))
+obstacle_img = pygame.Surface((40, 60));
+obstacle_img.fill((128, 0, 0))
+flappy_img = pygame.Surface((40, 30));
+flappy_img.fill((0, 0, 128))
+snake_img = pygame.Surface((20, 20));
+snake_img.fill((0, 255, 0))
+laby_img = pygame.Surface((40, 40));
+laby_img.fill((0, 200, 0))
+
+font = pygame.font.Font(None, 36)
+clock = pygame.time.Clock()
+
+
+# ==================== JEU DINO ====================
+def jeu_dino():
+    """Jeu du dinosaure : score ≥ 20 pour réussir."""
+    dino = pygame.Rect(50, 200, 50, 50)
+    sol = pygame.Rect(0, 250, LARGEUR, 10)
+    obstacles = []
+    score = 0
+    gravite = 1
+    y_v = 0
+    saut = -15
+    vitesse = 5
+    objectif = 20
+    run, game_over, win = True, False, False
+
+    while run:
+        clock.tick(60)
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                pygame.quit()
+                return False
+            if e.type == pygame.KEYDOWN:
+                if e.key == pygame.K_ESCAPE:
+                    return win
+                if e.key == pygame.K_SPACE and dino.y == 200 and not game_over:
+                    y_v = saut
+
+        if not game_over and not win:
+            y_v += gravite
+            dino.y += y_v
+            if dino.y >= 200:
+                dino.y, y_v = 200, 0
+
+            if not obstacles or obstacles[-1].x < LARGEUR - 200:
+                if random.random() < 0.03:
+                    obstacles.append(pygame.Rect(LARGEUR, 190, 40, 60))
+
+            for ob in obstacles:
+                ob.x -= vitesse
+            obstacles = [ob for ob in obstacles if ob.x > -40]
+
+            if obstacles and obstacles[0].x < 50:
+                score += 1
+                obstacles.pop(0)
+                if score >= objectif:
+                    win = True
+
+            for ob in obstacles:
+                if dino.colliderect(ob):
+                    game_over = True
+
+        # Affichage
+        FENETRE.fill(BLANC)
+        FENETRE.blit(dino_img, (dino.x, dino.y))
+        pygame.draw.rect(FENETRE, NOIR, sol)
+        for ob in obstacles:
+            FENETRE.blit(obstacle_img, (ob.x, ob.y))
+
+        FENETRE.blit(font.render(f"Score: {score}/{objectif}", True, NOIR), (10, 10))
+        if game_over:
+            FENETRE.blit(font.render("Game Over! ECHAP pour menu", True, NOIR),
+                         (LARGEUR // 2 - 180, HAUTEUR // 2))
+        elif win:
+            FENETRE.blit(font.render("Victoire! ECHAP pour menu", True, VERT),
+                         (LARGEUR // 2 - 180, HAUTEUR // 2))
+
+        pygame.display.update()
+    return win
+
+
+# ==================== JEU FLAPPY ====================
+def jeu_flappy():
+    """Flappy Bird : score ≥ 10 pour réussir."""
+    bird = pygame.Rect(100, HAUTEUR // 2, 40, 30)
+    tuyaux = []
+    score = 0
+    gravite = 1.3
+    y_v = 0
+    saut = -12
+    vitesse = 4
+    objectif = 10
+    start, game_over, win = False, False, False
+
+    while True:
+        clock.tick(60)
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                pygame.quit()
+                return False
+            if e.type == pygame.KEYDOWN:
+                if e.key == pygame.K_ESCAPE:
+                    return win
+                if e.key == pygame.K_SPACE and not game_over:
+                    if not start:
+                        start = True
+                    y_v = saut
+
+        if start and not game_over and not win:
+            y_v += gravite
+            bird.y += y_v
+
+            if not tuyaux or tuyaux[-1].x < LARGEUR - 300:
+                h1 = random.randint(50, 200)
+                h2 = HAUTEUR - h1 - 150
+                tuyaux += [
+                    pygame.Rect(LARGEUR, 0, 50, h1),
+                    pygame.Rect(LARGEUR, HAUTEUR - h2, 50, h2)
+                ]
+
+            for t in tuyaux:
+                t.x -= vitesse
+            tuyaux = [t for t in tuyaux if t.x > -50]
+
+
+            if len(tuyaux) >= 2 and tuyaux[0].x < 100 <= tuyaux[0].x + vitesse:
+                score += 1
+                if score >= objectif:
+                    win = True
+
+
+            for t in tuyaux:
+                if bird.colliderect(t):
+                    game_over = True
+            if bird.y <= 0 or bird.y >= HAUTEUR:
+                game_over = True
+
+
+        FENETRE.fill(BLANC)
+        FENETRE.blit(flappy_img, (bird.x, bird.y))
+        for t in tuyaux:
+            pygame.draw.rect(FENETRE, NOIR, t)
+        FENETRE.blit(font.render(f"Score: {score}/{objectif}", True, NOIR), (10, 10))
+
+        if not start:
+            FENETRE.blit(font.render("ESPACE pour démarrer", True, NOIR),
+                         (LARGEUR // 2 - 150, HAUTEUR // 2))
+        elif game_over:
+            FENETRE.blit(font.render("Game Over! ECHAP pour menu", True, NOIR),
+                         (LARGEUR // 2 - 180, HAUTEUR // 2))
+        elif win:
+            FENETRE.blit(font.render("Victoire! ECHAP pour menu", True, VERT),
+                         (LARGEUR // 2 - 180, HAUTEUR // 2))
+
+        pygame.display.update()
+
+
+# ==================== JEU SNAKE ====================
+def jeu_snake():
+    """Snake : score ≥ 10 pour réussir."""
+    taille = 20
+    cols = LARGEUR // taille
+    rows = HAUTEUR // taille
+    x = cols // 2 * taille
+    y = rows // 2 * taille
+    vx, vy = taille, 0
+    serpent = [[x, y]]
+    longueur = 1
+    pomme = [random.randrange(cols) * taille, random.randrange(rows) * taille]
+    score = 0
+    objectif = 10
+
+    while True:
+        clock.tick(10)
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                pygame.quit()
+                return False
+            if e.type == pygame.KEYDOWN:
+                if e.key == pygame.K_ESCAPE:
+                    return score >= objectif
+                if e.key == pygame.K_LEFT and vx == 0:
+                    vx, vy = -taille, 0
+                if e.key == pygame.K_RIGHT and vx == 0:
+                    vx, vy = taille, 0
+                if e.key == pygame.K_UP and vy == 0:
+                    vx, vy = 0, -taille
+                if e.key == pygame.K_DOWN and vy == 0:
+                    vx, vy = 0, taille
+
+        x += vx
+        y += vy
+        tete = [x, y]
+        if x < 0 or x >= LARGEUR or y < 0 or y >= HAUTEUR or tete in serpent:
+            return False
+
+        serpent.insert(0, tete)
+        if tete == pomme:
+            score += 1
+            pomme = [random.randrange(cols) * taille, random.randrange(rows) * taille]
+            longueur += 1
+        else:
+            serpent = serpent[:longueur]
+
+        FENETRE.fill(NOIR)
+        for bloc in serpent:
+            pygame.draw.rect(FENETRE, VERT, (*bloc, taille, taille))
+        pygame.draw.rect(FENETRE, ROUGE, (*pomme, taille, taille))
+        FENETRE.blit(font.render(f"Score: {score}/{objectif}", True, BLANC), (10, 10))
+        pygame.display.update()
+
+
+# ==================== JEU LABYRINTHE ====================
+def jeu_labyrinthe():
+    """Labyrinthe : collecter 20 pièces à travers 4 niveaux."""
+    # Configuration initiale
+    TILE_SIZE = 40
+    TOTAL_COINS = 20
+    COINS_PER_LEVEL = 5
+
+    # Niveaux
+    levels = [
+        [
+            "WWWWWWWWWWWWWWWWWWWW",
+            "W     W     W     CW",
+            "W W W W WWW W WWW WW",
+            "W W W   W   W     WW",
+            "W WWWWWWW WWW WWW WW",
+            "W     W     W     WW",
+            "W WWW WWWWW WWWWW WW",
+            "W   W     W W     WW",
+            "WWW WWWWW W W WWW WW",
+            "W   W   W   W W   DW",
+            "WWWWWWWWWWWWWWWWWWWW"
+        ],
+        [
+            "WWWWWWWWWWWWWWWWWWWW",
+            "WC    W         W  W",
+            "W WWW W WWWWWWW W WW",
+            "W   W W W     W W WW",
+            "WWW W W W WWW W W WW",
+            "W   W   W   W   W WW",
+            "W WWWWWWWWW WWWWW WW",
+            "W       C     W   WW",
+            "W WWW WWWWW W W WWWW",
+            "WD  W       W     WW",
+            "WWWWWWWWWWWWWWWWWWWW"
+        ],
+        [
+            "WWWWWWWWWWWWWWWWWWWW",
+            "W  C   W   W   W   W",
+            "W WWWWW W W W W WWWW",
+            "W     W W W W W   WW",
+            "W WWW W W W W WWW WW",
+            "W   W W W W W     WW",
+            "WWW W W W W WWWWW WW",
+            "W C   W   W   C   WW",
+            "WWWWWWWWWWWWWWWWWDWW",
+            "W                 WW",
+            "WWWWWWWWWWWWWWWWWWWW"
+        ],
+        [
+            "WWWWWWWWWWWWWWWWWWWW",
+            "WC     C   W     C W",
+            "W WWWWWWW W WWWWW WW",
+            "W       W W     W WW",
+            "WWWWW W W WWWWW W WW",
+            "W     W W     W W WW",
+            "W WWWWW WWWWW W W WW",
+            "W         C   W W WW",
+            "W WWWWWWWWWWWWWWW WD",
+            "W                 WW",
+            "WWWWWWWWWWWWWWWWWWWW"
+        ]
+    ]
+
+    # Ennemis par niveau
+    enemies_config = {
+        1: [((5, 1), (5, 7), 'v')],
+        2: [((1, 1), (17, 1), 'h')],
+        3: [((10, 3), (10, 7), 'v')],
+        4: [((3, 1), (3, 9), 'v'), ((15, 1), (15, 9), 'v')]
+    }
+
+    def load_level(level_data, level_number):
+        walls = []
+        coins = []
+        enemies = []
+
+        for y, row in enumerate(level_data):
+            for x, tile in enumerate(row):
+                if tile == 'W':
+                    walls.append(pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+                elif tile == 'C':
+                    coins.append(pygame.Rect(x * TILE_SIZE + 10, y * TILE_SIZE + 10, 20, 20))
+                elif tile == 'D':
+                    global dino_start
+                    dino_start = (x * TILE_SIZE, y * TILE_SIZE)
+
+        # Ajout des ennemis
+        for start, end, direction in enemies_config.get(level_number, []):
+            enemy = {
+                'rect': pygame.Rect(start[0] * TILE_SIZE, start[1] * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+                'start': start,
+                'end': end,
+                'dir': direction,
+                'speed': 2
+            }
+            enemies.append(enemy)
+
+        return walls, coins, enemies
+
+    # Initialisation du jeu
+    level_index = 0
+    coin_count = 0
+    walls, coins, enemies = load_level(levels[level_index], level_index + 1)
+    dino = pygame.Rect(dino_start[0], dino_start[1], TILE_SIZE, TILE_SIZE)
+    dino_speed = 5
+    game_over = False
+    win_game = False
+
+
+    running = True
+    while running:
+        clock.tick(60)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                return win_game
+
+        if not game_over and not win_game:
+
+            keys = pygame.key.get_pressed()
+            dx = dy = 0
+            if keys[pygame.K_LEFT]: dx = -dino_speed
+            if keys[pygame.K_RIGHT]: dx = dino_speed
+            if keys[pygame.K_UP]: dy = -dino_speed
+            if keys[pygame.K_DOWN]: dy = dino_speed
+
+
+            dino.x += dx
+            for wall in walls:
+                if dino.colliderect(wall):
+                    if dx > 0: dino.right = wall.left
+                    if dx < 0: dino.left = wall.right
+            dino.y += dy
+            for wall in walls:
+                if dino.colliderect(wall):
+                    if dy > 0: dino.bottom = wall.top
+                    if dy < 0: dino.top = wall.bottom
+
+            for coin in coins[:]:
+                if dino.colliderect(coin):
+                    coins.remove(coin)
+                    coin_count += 1
+
+            for enemy in enemies:
+                if enemy['dir'] == 'v':
+                    enemy['rect'].y += enemy['speed']
+                    start_y = enemy['start'][1] * TILE_SIZE
+                    end_y = enemy['end'][1] * TILE_SIZE
+                    if enemy['rect'].top <= min(start_y, end_y) or enemy['rect'].bottom >= max(start_y + TILE_SIZE,
+                                                                                               end_y + TILE_SIZE):
+                        enemy['speed'] *= -1
+                else:
+                    enemy['rect'].x += enemy['speed']
+                    start_x = enemy['start'][0] * TILE_SIZE
+                    end_x = enemy['end'][0] * TILE_SIZE
+                    if enemy['rect'].left <= min(start_x, end_x) or enemy['rect'].right >= max(start_x + TILE_SIZE,
+                                                                                               end_x + TILE_SIZE):
+                        enemy['speed'] *= -1
+
+            for enemy in enemies:
+                if dino.colliderect(enemy['rect']):
+                    game_over = True
+
+            if coin_count >= (level_index + 1) * COINS_PER_LEVEL:
+                level_index += 1
+                if level_index >= 4:
+                    win_game = True
+                else:
+                    walls, coins, enemies = load_level(levels[level_index], level_index + 1)
+                    dino.topleft = dino_start
+
+
+        FENETRE.fill(NOIR)
+        for wall in walls:
+            pygame.draw.rect(FENETRE, BLEU, wall)
+        for coin in coins:
+            pygame.draw.rect(FENETRE, OR, coin)
+        for enemy in enemies:
+            pygame.draw.rect(FENETRE, ROUGE, enemy['rect'])
+        pygame.draw.rect(FENETRE, VERT, dino)
+
+        score_text = font.render(f"Pièces: {coin_count}/{TOTAL_COINS}", True, BLANC)
+        FENETRE.blit(score_text, (10, 10))
+
+        if game_over:
+            end_text = font.render("Perdu! ECHAP pour menu", True, ROUGE)
+            FENETRE.blit(end_text, (LARGEUR // 2 - 180, HAUTEUR // 2))
+
+        if win_game:
+            win_text = font.render("Victoire! ECHAP pour menu", True, VERT)
+            FENETRE.blit(win_text, (LARGEUR // 2 - 180, HAUTEUR // 2))
+
+        pygame.display.update()
+
+    return win_game
+
+
+# ==================== MENU PRINCIPAL ====================
+def menu():
+    dino_pos = (100, 200)
+    dino = pygame.Rect(*dino_pos, 50, 50)
+    r1 = pygame.Rect(300, 100, 200, 40)
+    r2 = pygame.Rect(300, 160, 200, 40)
+    r3 = pygame.Rect(300, 220, 200, 40)
+    r4 = pygame.Rect(300, 280, 200, 40)
+    unlocked_flappy = False
+    unlocked_snake = False
+    unlocked_laby = False
+
+    while True:
+        FENETRE.fill(BLANC)
+
+        FENETRE.blit(dino_img, (dino.x, dino.y))
+
+
+        pygame.draw.rect(FENETRE, VERT, r1)
+        FENETRE.blit(font.render("Dino (toujours)", True, NOIR), (r1.x + 20, r1.y + 5))
+
+        pygame.draw.rect(FENETRE, VERT if unlocked_flappy else ROUGE, r2)
+        FENETRE.blit(font.render("Flappy Bird", True, NOIR), (r2.x + 20, r2.y + 5))
+
+        pygame.draw.rect(FENETRE, VERT if unlocked_snake else ROUGE, r3)
+        FENETRE.blit(font.render("Snake", True, NOIR), (r3.x + 20, r3.y + 5))
+
+        pygame.draw.rect(FENETRE, VERT if unlocked_laby else ROUGE, r4)
+        FENETRE.blit(font.render("Labyrinthe", True, NOIR), (r4.x + 20, r4.y + 5))
+
+        FENETRE.blit(font.render("Use flèches pour déplacer", True, NOIR), (200, 20))
+        pygame.display.update()
+
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT] and dino.x > 0:              dino.x -= 5
+        if keys[pygame.K_RIGHT] and dino.x < LARGEUR - 50:    dino.x += 5
+        if keys[pygame.K_UP] and dino.y > 0:               dino.y -= 5
+        if keys[pygame.K_DOWN] and dino.y < HAUTEUR - 50:    dino.y += 5
+
+
+        if dino.colliderect(r1):
+            if jeu_dino():
+                unlocked_flappy = True
+            dino.topleft = dino_pos
+
+        elif dino.colliderect(r2) and unlocked_flappy:
+            if jeu_flappy():
+                unlocked_snake = True
+            dino.topleft = dino_pos
+
+        elif dino.colliderect(r3) and unlocked_snake:
+            if jeu_snake():
+                unlocked_laby = True
+            dino.topleft = dino_pos
+
+        elif dino.colliderect(r4) and unlocked_laby:
+            jeu_labyrinthe()
+            dino.topleft = dino_pos
+
+        clock.tick(60)
+
+
+if __name__ == "__main__":
+    menu()
+    pygame.quit()
